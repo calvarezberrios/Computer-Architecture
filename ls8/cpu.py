@@ -5,6 +5,7 @@ import sys
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
+MUL = 0b10100010
 
 class CPU:
     """Main CPU class."""
@@ -14,8 +15,9 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.reg[7] = 0xF4
-        self.pc = 0     
+        self.pc = 0    
         self.halted = False   
+        
 
     def ram_read(self, MAR):
         return self.ram[MAR]
@@ -63,6 +65,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -96,24 +100,41 @@ class CPU:
             operand_b = self.ram_read(self.pc + 2)
             
             self.execute_instruction(IR, operand_a, operand_b)
-            
 
     def execute_instruction(self, IR, operand_a, operand_b):
         number_of_operands = ((IR >> 6) & 0b11)
 
-        if IR == LDI:                
-            self.reg[operand_a] = operand_b
-            self.pc += number_of_operands
-        elif IR == PRN:
-            print(self.reg[operand_a])
-            self.pc += number_of_operands
-        elif IR == HLT:
-            self.halted = True
-        else:
+        branchtable = {
+            LDI: self.handle_LDI,
+            PRN: self.handle_PRN,
+            HLT: self.handle_HLT,
+            MUL: self.handle_MUL
+        }
+
+        if IR not in branchtable:
             print(f"Unknown instruction {IR}")
             self.halted = True
+        else:         
+            branchtable[IR](operand_a, operand_b)
+            
         
-        self.pc += 1
+        self.pc += number_of_operands + 1
+
+
+
+    def handle_LDI(self, operand_a, operand_b):
+        self.reg[operand_a] = operand_b
+    
+    def handle_PRN(self, operand_a, operand_b):
+        print(self.reg[operand_a])
+
+    def handle_HLT(self, operand_a, operand_b):
+        self.halted = True
+    
+    def handle_MUL(self, operand_a, operand_b):
+        self.alu("MUL", operand_a, operand_b)
+
+    
 
 
         
