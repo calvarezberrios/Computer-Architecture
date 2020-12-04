@@ -11,9 +11,11 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.ram = [None] * 256
+        self.ram = [0] * 256
         self.reg = [0] * 8
-        self.pc = 0        
+        self.reg[7] = 0xF4
+        self.pc = 0     
+        self.halted = False   
 
     def ram_read(self, MAR):
         return self.ram[MAR]
@@ -21,26 +23,39 @@ class CPU:
     def ram_write(self, MDR, MAR):
         self.ram[MAR] = MDR
 
-    def load(self):
+    def load(self, filename):
         """Load a program into memory."""
 
-        address = 0
+        MAR = 0
+
+        try:
+            with open(filename) as program:
+                for line in program:
+                    comment_split = line.split("#")
+                    try:
+                        MDR = int(comment_split[0], 2)
+                        self.ram_write(MDR, MAR)
+                        MAR += 1
+                    except:
+                        continue
+        except FileNotFoundError:
+            print("File Not Found...")
+            sys.exit(1)
 
         # For now, we've just hardcoded a program:
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -74,26 +89,31 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        running = True
 
-        while running:
-            IR = self.ram[self.pc]
+        while not self.halted:
+            IR = self.ram_read(self.pc)
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
-
-            if IR == LDI:                
-                self.reg[operand_a] = operand_b
-                self.pc += 2
-            elif IR == PRN:
-                print(self.reg[operand_a])
-                self.pc += 1
-            elif IR == HLT:
-                running = False
-            else:
-                print(f"Unknown instruction {IR}")
-                sys.exit(1)
             
-            self.pc += 1
+            self.execute_instruction(IR, operand_a, operand_b)
+            
+
+    def execute_instruction(self, IR, operand_a, operand_b):
+        number_of_operands = ((IR >> 6) & 0b11)
+
+        if IR == LDI:                
+            self.reg[operand_a] = operand_b
+            self.pc += number_of_operands
+        elif IR == PRN:
+            print(self.reg[operand_a])
+            self.pc += number_of_operands
+        elif IR == HLT:
+            self.halted = True
+        else:
+            print(f"Unknown instruction {IR}")
+            self.halted = True
+        
+        self.pc += 1
 
 
         
