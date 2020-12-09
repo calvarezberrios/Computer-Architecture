@@ -124,7 +124,7 @@ class CPU:
             self.pc += number_of_operands + 1
 
 
-
+    # Start of Operation Handles
     def handle_LDI(self, operand_a, operand_b):
         self.reg[operand_a] = operand_b
     
@@ -159,4 +159,4 @@ class CPU:
         address_to_jump_to = self.reg[operand_a]
         self.pc = address_to_jump_to
 
-        
+    # End of Operation Handles 
