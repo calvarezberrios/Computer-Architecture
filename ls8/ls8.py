@@ -8,10 +8,8 @@ from cpu import *
 cpu = CPU()
 
 if len(sys.argv) < 2:
-    print("Missing program filename...")
+    print("Incorrect number of arguments")
     sys.exit(1)
 
-file_to_execute = sys.argv[1]
-
-cpu.load(file_to_execute)
+cpu.load(sys.argv[1])
 cpu.run()
