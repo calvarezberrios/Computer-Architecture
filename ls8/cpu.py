@@ -152,7 +152,7 @@ class CPU:
             self.reg[operand_a] = value_in_stack_pointer_register
             self.reg[self.stack_pointer_register] += 1
         else:
-            print("STACK UNDERFLOW! Stack is currently empty, nothing to pop...")
+            print("STACK UNDERFLOW! Stack is empty...")
             sys.exit(1)
     
     def handle_JUMP(self, operand_a):
