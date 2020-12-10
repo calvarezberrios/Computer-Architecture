@@ -104,3 +104,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+#lecture
+/ls8/examples/lecture.py
