@@ -10,6 +10,11 @@ MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110 
 JMP = 0b01010100
+CALL = 0b01010000
+RET = 0b00010001
+ST = 0b10000100
+
+SP = 7
 
 class CPU:
     """Main CPU class."""
@@ -19,10 +24,8 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0x00    
-        self.halted = False   
-        
-        self.stack_pointer_register = 7     
-        self.reg[self.stack_pointer_register] = 0xF4
+        self.halted = False     
+        self.reg[SP] = 0xF4
         self.end_of_stack = 0x00       
         
 
@@ -106,7 +109,10 @@ class CPU:
             MUL: self.handle_ALU,
             PUSH: self.handle_PUSH,
             POP: self.handle_POP,
-            JMP: self.handle_JUMP
+            JMP: self.handle_JUMP,
+            CALL: self.handle_CALL,
+            RET: self.handle_RET,
+            ST: self.handle_ST
         }
 
         if IR not in branchtable:
@@ -119,8 +125,9 @@ class CPU:
                 branchtable[IR](operand_a)
             else:
                 branchtable[IR]()
-            
-        if IR != JMP:
+
+
+        if IR != JMP and IR != CALL and IR != RET:
             self.pc += number_of_operands + 1
 
 
@@ -139,18 +146,18 @@ class CPU:
         self.alu(IR, operand_a, operand_b)
 
     def handle_PUSH(self, operand_a):
-        if self.reg[self.stack_pointer_register] - 1 < self.end_of_stack:
+        if self.reg[SP] - 1 < self.end_of_stack:
             print("STACK OVERFLOW! Exceeded maximum allocated space for the stack...")
             sys.exit(1)
-        self.reg[self.stack_pointer_register] -= 1
+        self.reg[SP] -= 1
         value_in_register = self.reg[operand_a]
-        self.ram[self.reg[self.stack_pointer_register]] = value_in_register
+        self.ram_write(value_in_register, self.reg[SP])
 
     def handle_POP(self, operand_a):
-        if self.reg[self.stack_pointer_register] < 0xF4:
-            value_in_stack_pointer_register = self.ram[self.reg[self.stack_pointer_register]]
+        if self.reg[SP] < 0xF4:
+            value_in_stack_pointer_register = self.ram_read(self.reg[SP])
             self.reg[operand_a] = value_in_stack_pointer_register
-            self.reg[self.stack_pointer_register] += 1
+            self.reg[SP] += 1
         else:
             print("STACK UNDERFLOW! Stack is empty...")
             sys.exit(1)
@@ -158,5 +165,18 @@ class CPU:
     def handle_JUMP(self, operand_a):
         address_to_jump_to = self.reg[operand_a]
         self.pc = address_to_jump_to
+
+    def handle_CALL(self, operand_a):
+        self.reg[SP] -= 1
+        self.ram_write(self.pc + 2, self.reg[SP])
+        self.pc = self.reg[operand_a]
+
+    def handle_RET(self):
+        self.pc = self.ram_read(self.reg[SP])
+        self.reg[SP] += 1
+    
+    def handle_ST(self, operand_a, operand_b):
+        self.reg[operand_a] = self.reg[operand_b]
+
 
     # End of Operation Handles 
