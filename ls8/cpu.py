@@ -13,8 +13,15 @@ JMP = 0b01010100
 CALL = 0b01010000
 RET = 0b00010001
 ST = 0b10000100
+CMP = 0b10100111
+JEQ = 0b01010101
+JNE = 0b01010110 
+      
 
 SP = 7
+L = 0b00000100
+G = 0b00000010
+E = 0b00000001
 
 class CPU:
     """Main CPU class."""
@@ -24,6 +31,7 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0x00    
+        self.fl = 0b00000000
         self.halted = False     
         self.reg[SP] = 0xF4
         self.end_of_stack = 0x00       
@@ -64,7 +72,13 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == MUL:
             self.reg[reg_a] *= self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == CMP:
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.fl = E
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.fl = L
+            else:
+                self.fl = G
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -100,6 +114,7 @@ class CPU:
 
     def execute_instruction(self, IR, operand_a, operand_b):
         number_of_operands = ((IR >> 6) & 0b11)
+        sets_pc = ((IR >> 4) & 0b0001)
 
         branchtable = {
             LDI: self.handle_LDI,
@@ -112,9 +127,13 @@ class CPU:
             JMP: self.handle_JUMP,
             CALL: self.handle_CALL,
             RET: self.handle_RET,
-            ST: self.handle_ST
+            ST: self.handle_ST,
+            CMP: self.handle_ALU,
+            JEQ: self.handle_JEQ,
+            JNE: self.handle_JNE
         }
-
+        
+        
         if IR not in branchtable:
             print(f"Unknown instruction {IR}")
             self.halted = True
@@ -127,7 +146,7 @@ class CPU:
                 branchtable[IR]()
 
 
-        if IR != JMP and IR != CALL and IR != RET:
+        if sets_pc == 0:
             self.pc += number_of_operands + 1
 
 
@@ -165,6 +184,7 @@ class CPU:
     def handle_JUMP(self, operand_a):
         address_to_jump_to = self.reg[operand_a]
         self.pc = address_to_jump_to
+            
 
     def handle_CALL(self, operand_a):
         self.reg[SP] -= 1
@@ -178,5 +198,16 @@ class CPU:
     def handle_ST(self, operand_a, operand_b):
         self.reg[operand_a] = self.reg[operand_b]
 
+    def handle_JEQ(self, operand_a):
+        if self.fl == E:
+            self.pc = self.reg[operand_a]
+        else:
+            self.pc += 2
+
+    def handle_JNE(self, operand_a):
+        if self.fl != E:
+            self.pc = self.reg[operand_a]
+        else:
+            self.pc += 2
 
     # End of Operation Handles 
