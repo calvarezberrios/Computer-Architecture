@@ -1,6 +1,7 @@
 """CPU functionality."""
 
 import sys
+from datetime import datetime
 
 LDI = 0b10000010
 PRN = 0b01000111
@@ -34,7 +35,8 @@ class CPU:
         self.fl = 0b00000000
         self.halted = False     
         self.reg[SP] = 0xF4
-        self.end_of_stack = 0x00       
+        self.end_of_stack = 0x00    
+        self.last_saved_time = datetime.now()   
         
 
     def ram_read(self, MAR):
@@ -132,7 +134,35 @@ class CPU:
             JEQ: self.handle_JEQ,
             JNE: self.handle_JNE
         }
-        
+
+        curr_time = datetime.now()
+
+        if curr_time - self.last_saved_time >= 1:
+            self.last_saved_time = curr_time
+            self.reg[6] = 0b10000000
+
+        masked_interrupts = self.reg[5] & self.reg[6]
+
+        for i in range(8):
+            interrupt_happened = ((masked_interrupts >> i) & 1) == 1
+            if interrupt_happened:
+                self.reg[5] = 0b00000000
+                self.reg[6] = 0b00000000
+
+                self.reg[SP] -= 1
+                self.ram_write(self.pc, self.reg[SP])
+
+                self.reg[SP] -= 1
+                self.ram_write(self.fl, self.reg[SP])
+
+                for i in range(7):
+                    self.reg[SP] -= 1
+                    self.ram_write(self.reg[i], self.reg[SP])
+
+                
+                break
+
+
         
         if IR not in branchtable:
             print(f"Unknown instruction {IR}")
@@ -196,7 +226,7 @@ class CPU:
         self.reg[SP] += 1
     
     def handle_ST(self, operand_a, operand_b):
-        self.reg[operand_a] = self.reg[operand_b]
+        self.ram_write(self.reg[operand_b], self.reg[operand_a])
 
     def handle_JEQ(self, operand_a):
         if self.fl == E:
